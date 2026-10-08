@@ -651,24 +651,45 @@ def route_after_agent(current_agent: str):
 
 
 
+
 # =========================
 # Build Graph
 # =========================
-
 graph = StateGraph(TravelState)
 
+graph.add_node("supervisor", supervisor_agent)
+graph.add_node("guardrail_blocked", guardrail_blocked_agent)
 graph.add_node("flight_agent", flight_agent)
 graph.add_node("hotel_agent", hotel_agent)
 graph.add_node("weather_agent", weather_agent)
+graph.add_node("budget_agent", budget_agent)
 graph.add_node("itinerary_agent", itinerary_agent)
+graph.add_node("human_approval", human_approval_agent)
 graph.add_node("final_agent", final_agent)
 
-graph.add_edge(START, "flight_agent")
-graph.add_edge("flight_agent", "hotel_agent")
-graph.add_edge("hotel_agent", "weather_agent")
-graph.add_edge("weather_agent", "itinerary_agent")
-graph.add_edge("itinerary_agent", "final_agent")
+graph.add_edge(START, "supervisor")
+graph.add_conditional_edges("supervisor", route_from_supervisor, ROUTE_MAP)
+
+graph.add_conditional_edges(
+    "flight_agent", route_after_agent("flight_agent"), ROUTE_MAP
+)
+graph.add_conditional_edges(
+    "hotel_agent", route_after_agent("hotel_agent"), ROUTE_MAP
+)
+graph.add_conditional_edges(
+    "weather_agent", route_after_agent("weather_agent"), ROUTE_MAP
+)
+graph.add_conditional_edges(
+    "budget_agent", route_after_agent("budget_agent"), ROUTE_MAP
+)
+
+graph.add_edge("itinerary_agent", "human_approval")
+graph.add_edge("human_approval", "final_agent")
 graph.add_edge("final_agent", END)
+graph.add_edge("guardrail_blocked", END)
+
+
+
 
 # =========================
 # PostgreSQL Checkpointer
@@ -689,43 +710,113 @@ travel_graph = graph.compile(checkpointer=checkpointer)
 
 
 # =========================
-# Function for FastAPI
+# FastAPI-facing helpers
 # =========================
+def _interrupt_payload(result: dict[str, Any]) -> dict[str, Any] | None:
+    interrupts = result.get("__interrupt__", [])
+    if not interrupts:
+        return None
 
-def run_travel_agent(user_input: str, thread_id: str | None = None):
-    if not thread_id:
-        thread_id = f"user_{uuid.uuid4().hex}"
+    first_interrupt = interrupts[0]
+    payload = getattr(first_interrupt, "value", first_interrupt)
+    return payload if isinstance(payload, dict) else {"value": payload}
 
-    config = {
-        "configurable": {
-            "thread_id": thread_id
-        }
-    }
 
-    result = travel_graph.invoke(
-        {
-            "messages": [
-                HumanMessage(content=user_input)
-            ],
-            "user_query": user_input,
-            "flight_results": "",
-            "hotel_results": "",
-            "weather_results":"",
-            "itinerary": "",
-            "llm_calls": 0
-        },
-        config=config
-    )
+def _serialize_result(
+    result: dict[str, Any],
+    thread_id: str,
+) -> dict[str, Any]:
+    messages = result.get("messages", [])
+    last_message = messages[-1].content if messages else ""
+    answer = result.get("final_response") or last_message
+    interrupt_payload = _interrupt_payload(result)
 
-    final_answer = result["messages"][-1].content
+    if interrupt_payload:
+        answer = interrupt_payload.get("draft_itinerary") or result.get(
+            "itinerary", ""
+        )
 
     return {
         "thread_id": thread_id,
-        "answer": final_answer,
+        "answer": answer,
+        "requires_approval": interrupt_payload is not None,
+        "approval_request": (
+            interrupt_payload.get("approval_request", "")
+            if interrupt_payload
+            else result.get("approval_request", "")
+        ),
         "flight_results": result.get("flight_results", ""),
         "hotel_results": result.get("hotel_results", ""),
         "weather_results": result.get("weather_results", ""),
-        "itinerary": result.get("itinerary", ""),
+        "budget_results": result.get("budget_results", ""),
+        "itinerary": (
+            interrupt_payload.get("draft_itinerary", "")
+            if interrupt_payload
+            else result.get("itinerary", "")
+        ),
+        "selected_agents": result.get("selected_agents", []),
+        "trip_constraints": result.get("trip_constraints", {}),
+        "supervisor_reasoning": result.get("supervisor_reasoning", ""),
+        "guardrail_allowed": result.get("guardrail_allowed", True),
+        "guardrail_reason": result.get("guardrail_reason", ""),
+        "approved": result.get("approved"),
+        "human_feedback": result.get("human_feedback", ""),
         "llm_calls": result.get("llm_calls", 0),
     }
+
+
+def run_travel_agent(user_input: str, thread_id: str | None = None):
+    """Start a new travel-planning run and pause at human approval."""
+    if not thread_id:
+        thread_id = f"user_{uuid.uuid4().hex}"
+
+    config = {"configurable": {"thread_id": thread_id}}
+
+    result = travel_graph.invoke(
+        {
+            "messages": [HumanMessage(content=user_input)],
+            "user_query": user_input,
+            "guardrail_allowed": True,
+            "guardrail_reason": "",
+            "selected_agents": [],
+            "trip_constraints": _empty_constraints(),
+            "supervisor_reasoning": "",
+            "flight_results": "",
+            "hotel_results": "",
+            "weather_results": "",
+            "budget_results": "",
+            "itinerary": "",
+            "approval_request": "",
+            "approved": False,
+            "human_feedback": "",
+            "final_response": "",
+            "llm_calls": 0,
+        },
+        config=config,
+    )
+
+    return _serialize_result(result, thread_id)
+
+
+def resume_travel_agent(
+    thread_id: str,
+    approved: bool,
+    feedback: str = "",
+):
+    """Resume the paused LangGraph thread after human review."""
+    if not thread_id:
+        raise ValueError("thread_id is required to resume a travel plan.")
+
+    config = {"configurable": {"thread_id": thread_id}}
+    result = travel_graph.invoke(
+        Command(
+            resume={
+                "approved": approved,
+                "feedback": feedback.strip(),
+            }
+        ),
+        config=config,
+    )
+
+    return _serialize_result(result, thread_id)
 
