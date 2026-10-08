@@ -47,7 +47,7 @@ client = MultiServerMCPClient(
             # Automatically use custom_weather_mcp_server.py
             # from the current project directory.
             "args": [
-                r"D:\Projects\Multi agent Travel planner\Multi-agent-Travel-planner\custom_weather_mcp_server.py"
+                r"D:\Projects\Multi agent Travel planner\Multi Agent system\Multi-Agent-system-using-LanGraph-MCP-Supervisor-Guardrails-HILT\custom_weather_mcp_server.py"
             ],
             "env": {
                 "OPENWEATHER_API_KEY": OPENWEATHER_API_KEY or ""
@@ -55,6 +55,7 @@ client = MultiServerMCPClient(
         }
     }
 )
+
 
 
 #check if the client is connected to all servers
