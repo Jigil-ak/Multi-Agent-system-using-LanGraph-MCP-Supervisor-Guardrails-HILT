@@ -16,7 +16,7 @@ import json
 from psycopg.rows import dict_row
 
 from langgraph.graph import StateGraph, START, END
-from langgraph.types import interrupt,command
+from langgraph.types import interrupt, Command
 from langgraph.checkpoint.postgres import PostgresSaver
 from langchain_core.messages import (
     AnyMessage,
