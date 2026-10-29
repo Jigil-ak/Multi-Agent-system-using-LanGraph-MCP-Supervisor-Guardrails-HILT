@@ -1,3 +1,5 @@
+# ✈️ TripMate AI — Multi-Agent Travel Planner
+
 # Multi-Agent-System-using-LangGraph-MCP-Supervisor-Guardrails-HITL
 
 A complete multi-agent system that uses **LangGraph** and the **Model Context Protocol (MCP)** to implement a production-ready travel-planning assistant with a **Supervisor**, input **Guardrails**, and **Human-In-The-Loop (HITL)** approval flows.
@@ -104,8 +106,8 @@ User Request
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/your-username/Multi-Agent-System-using-LangGraph-MCP-Supervisor-Guardrails-HITL.git
-cd Multi-Agent-System-using-LangGraph-MCP-Supervisor-Guardrails-HITL
+git clone https://github.com/Jigil-ak/Multi-Agent-system-using-LanGraph-MCP-Supervisor-Guardrails-HILT.git
+cd Multi-Agent-system-using-LanGraph-MCP-Supervisor-Guardrails-HILT
 ```
 
 ### 2. Create and activate a virtual environment
@@ -139,7 +141,7 @@ uvicorn app:app --reload --host 127.0.0.1 --port 8000
 ```
 
 ### 7. Open the web UI
-Visit **[http://127.0.0.1:8000](http://127.0.0.1:8000)** in your browser to start planning trips.
+Visit **http://127.0.0.1:8000** in your browser to start planning trips.
 
 ---
 
@@ -207,31 +209,23 @@ curl -X POST http://127.0.0.1:8000/api/travel/approve \
 Create a `.env` file in the project root:
 
 ```ini
-# =========================
 # LLM Provider (Groq)
-# =========================
 GROQ_API_KEY=your_groq_api_key_here
 
-# =========================
 # Database (PostgreSQL Checkpointer)
-# =========================
-DATABASE_URL=postgresql://user:password@localhost:5432/travel_db?sslmode=require
+DATABASE_URL=
 
-# =========================
 # Search & External APIs
-# =========================
 TAVILY_API_KEY=your_tavily_api_key_here
 OPENWEATHER_API_KEY=your_openweather_api_key_here
 AVIATIONSTACK_API_KEY=your_aviationstack_api_key_here
-DEFAULT_ORIGIN_IATA=COK
+DEFAULT_ORIGIN_IATA=
 
-# =========================
 # Tracing & Observability (Optional)
-# =========================
-LANGCHAIN_TRACING_V2=true
-LANGCHAIN_ENDPOINT=https://api.smith.langsmith.com
+LANGCHAIN_TRACING_V2=
+LANGCHAIN_ENDPOINT= 
 LANGCHAIN_API_KEY=your_langsmith_api_key_here
-LANGCHAIN_PROJECT=TripMate-AI
+LANGCHAIN_PROJECT=
 ```
 
 ---
@@ -269,7 +263,3 @@ This project is licensed under the terms of the [MIT License](LICENSE).
 - Flight and weather data provided by **AviationStack** and **OpenWeatherMap**.
 
 ---
-
-## Contact
-
-For questions, issues, or suggestions, please open an issue in the repository or contact the project maintainer.
