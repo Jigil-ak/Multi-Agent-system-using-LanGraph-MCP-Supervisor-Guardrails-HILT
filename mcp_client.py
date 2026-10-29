@@ -16,6 +16,7 @@ AVIATIONSTACK_API_KEY = os.getenv("AVIATIONSTACK_API_KEY")
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
+#changes the model
 #llm
 llm = ChatGroq(
     model="openai/gpt-oss-120b",
